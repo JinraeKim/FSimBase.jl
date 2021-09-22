@@ -1,5 +1,7 @@
 # FSimBase
-[FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) is 
+[FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) is
+the lightweight base library for [FlightSims.jl](https://github.com/JinraeKim/FlightSims.jl/tree/master/src/APIs),
+a general-purpose simulator supporting nested dynamical systems simulation and macro-based data logger.
 
 ## Examples
 For more rich examples, see [FlightSims.jl](https://github.com/JinraeKim/FlightSims.jl).
