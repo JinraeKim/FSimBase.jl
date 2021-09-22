@@ -35,7 +35,7 @@ end
 ```
 
 ### (TL; DR) Toy example
-```
+```julia
 using FSimBase
 
 using LinearAlgebra  # for I, e.g., Matrix(I, n, n)
