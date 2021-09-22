@@ -11,7 +11,8 @@ using NamedTupleTools: namedtuple
 
 
 export AbstractEnv, State, Params, Dynamics, Dynamics!
-export sim, apply_inputs, Command
+export AbstractController, Command
+export sim, apply_inputs
 
 
 include("APIs/APIs.jl")
