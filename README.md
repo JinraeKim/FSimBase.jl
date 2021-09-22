@@ -35,6 +35,7 @@ end
 ```
 
 ### (TL; DR) Toy example
+```
 using FSimBase
 
 using LinearAlgebra  # for I, e.g., Matrix(I, n, n)
@@ -112,4 +113,11 @@ function main()
     savefig(p_x, joinpath(dir_log, "toy_example.png"))
     display(p_x)
 end
+```
 ![ex_screenshot](./figures/toy_example.png)
+
+
+
+## Related packages
+### Dependencies
+- [SimulationLogger.jl](https://github.com/JinraeKim/SimulationLogger.jl): A convenient logging tools compatible with [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl).
