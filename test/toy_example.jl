@@ -1,41 +1,3 @@
-# FSimBase
-[FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) is
-the lightweight base library for numerical simulation supporting nested dynamical systems and macro-based data logger.
-
-## Notes
-[FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) works alone!
-For more functionality, see [FlightSims.jl](https://github.com/JinraeKim/FlightSims.jl).
-
-## Examples
-
-### (TL; DR) Minimal example
-```julia
-using FSimBase
-const FSBase = FSimBase
-using DifferentialEquations
-using SimulationLogger: @log
-
-using ComponentArrays
-
-
-function main()
-    state0 = [1, 2]
-    p = 1
-    @Loggable function dynamics!(dx, x, p, t)
-        @log t
-        @log x
-        dx .= -p.*x
-    end
-    prob, df = FSimBase.sim(state0, dynamics!, p;
-                            solver=Tsit5(),
-                            tf=10.0,
-                           )
-    df
-end
-```
-
-### (TL; DR) Toy example
-```
 using FSimBase
 
 using LinearAlgebra  # for I, e.g., Matrix(I, n, n)
@@ -113,11 +75,3 @@ function main()
     savefig(p_x, joinpath(dir_log, "toy_example.png"))
     display(p_x)
 end
-```
-![ex_screenshot](./figures/toy_example.png)
-
-
-
-## Related packages
-### Dependencies
-- [SimulationLogger.jl](https://github.com/JinraeKim/SimulationLogger.jl): A convenient logging tools compatible with [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl).
