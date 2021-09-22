@@ -1,10 +1,20 @@
 # FSimBase
 [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) is
-the lightweight base library for numerical simulation supporting nested dynamical systems and macro-based data logger.
+the lightweight base library for numerical simulation supporting nested dynamical systems and macro-based data logger,
+compatible with [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl).
 
 ## Notes
-[FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) works alone!
+- [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) works alone!
 For more functionality, see [FlightSims.jl](https://github.com/JinraeKim/FlightSims.jl).
+- In [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl),
+you must specify [the differential equation solver](https://diffeq.sciml.ai/stable/#Solver-Algorithms).
+
+For example, 
+```julia
+using OrdinaryDiffEq
+# ...
+prob, df = sim(state0, dyn, p; solver=Tsit5())
+```
 
 ## Examples
 
