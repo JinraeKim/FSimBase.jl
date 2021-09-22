@@ -13,8 +13,9 @@ end
 """
 # Notes
 - Currently, only iip (isinplace) method is supported.
+- Default solver has been deprecated.
 """
-function sim(state0, dyn, p=nothing;
+function _sim(state0, dyn, p=nothing;
         solver=nothing,  # DifferentialEquations.jl will find a default solver
         t0=0.0, tf=1.0,
         callback::DECallback=CallbackSet(),
