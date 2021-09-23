@@ -4,7 +4,7 @@ the lightweight base library for numerical simulation supporting nested dynamica
 compatible with [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl).
 
 ## Notes
-- [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) works alone!
+- [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) **works alone**!
 For more functionality, see [FlightSims.jl](https://github.com/JinraeKim/FlightSims.jl).
 - In [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl),
 you must specify [the differential equation solver](https://diffeq.sciml.ai/stable/#Solver-Algorithms).
@@ -15,6 +15,55 @@ using OrdinaryDiffEq
 # ...
 prob, df = sim(state0, dyn, p; solver=Tsit5())
 ```
+
+## APIs
+Main APIs are provided in `src/APIs`.
+
+### Make an environment
+- `AbstractEnv`: an abstract type for user-defined and predefined environments.
+In general, environments is a sub-type of `AbstractEnv`.
+    ```julia
+    struct LinearSystemEnv <: AbstractEnv
+        A
+        B
+    end
+    ```
+- `State(env::AbstractEnv)`: return a function that produces structured states.
+    ```julia
+    function State(env::LinearSystemEnv)
+        @unpack B = env
+        n = size(B)[1]
+        return function (x)
+            @assert length(x) == n
+            x
+        end
+    end
+    ```
+- `Dynamics!(env::AbstractEnv)`: return a function that maps in-place dynamics,
+compatible with [DifferentialEquations.jl](https://github.com/SciML/DifferentialEquations.jl).
+User can extend these methods or simply define other methods.
+    ```julia
+    function Dynamics!(env::LinearSystemEnv)
+        @unpack A, B = env
+        @Loggable function dynamics!(dx, x, p, t; u)  # data would not be saved without @Loggable. Follow this form!
+            @log state = x  # syntax sugar; macro-based logging
+            @log input = u
+            dx .= A*x + B*u
+        end
+    end
+    ```
+- (Optional) `Params(env::AbstractEnv)`: returns structured parameters of given environment `env`.
+
+### Simulation, logging, and data saving & loading
+**Main APIs**
+- `sim(x0, dyn, p=nothing; kwargs...)`
+    - return `prob::DEProblem` and `df::DataFrame`.
+    - For now, only [**in-place** method (iip)](https://diffeq.sciml.ai/stable/basics/problem/#In-place-vs-Out-of-Place-Function-Definition-Forms) is supported.
+- `apply_inputs(func; kwargs...)`
+    - By using this, user can easily apply external inputs into environments. It is borrowed from [an MRAC example of ComponentArrays.jl](https://jonniedie.github.io/ComponentArrays.jl/stable/examples/adaptive_control/) and extended to be compatible with [SimulationLogger.jl](https://github.com/JinraeKim/SimulationLogger.jl).
+    - (Limitations) for now, dynamical equations wrapped by `apply_inputs` will automatically generate logging function (even without `@Loggable`). In this case, all data will be an array of empty `NamedTuple`.
+- Macros for logging data: `@Loggable`, `@log`, `@onlylog`, `@nested_log`, `@nested_onlylog`.
+    - For more details, see [SimulationLogger.jl](https://github.com/JinraeKim/SimulationLogger.jl).
 
 ## Examples
 
