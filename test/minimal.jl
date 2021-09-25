@@ -1,7 +1,5 @@
 using FSimBase
-const FSBase = FSimBase
 using DifferentialEquations
-using SimulationLogger: @log
 
 using ComponentArrays
 
@@ -14,9 +12,9 @@ function main()
         @log x
         dx .= -p.*x
     end
-    prob, df = FSimBase.sim(state0, dynamics!, p;
-                            solver=Tsit5(),
-                            tf=10.0,
-                           )
+    prob, df = sim(state0, dynamics!, p;
+                   solver=Tsit5(),
+                   tf=10.0,
+                  )
     df
 end
