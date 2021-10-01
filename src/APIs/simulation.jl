@@ -10,6 +10,32 @@ function _namedtuple(x::Dict)
 end
 
 
+function make_problem(state0, __dyn, p, t0, tf)
+    tspan = (t0, tf)
+    iip = true
+    prob = ODEProblem{iip}(__dyn, state0, tspan, p)  # true: isinplace
+    prob, tspan
+end
+
+"""
+Make an integrator::DEIntegrator
+"""
+function sim_interactive(state0, dyn, p=nothing;
+        t0=0.0, tf=1.0, solver=nothing, kwargs...,
+    )
+    prob, _ = make_problem(state0, dyn, p, t0, tf)
+    integrator = init(prob, solver; kwargs...)
+    integrator
+end
+
+"""
+Step `dt` time.
+"""
+function DiffEqBase.step!(integrator::DEIntegrator, dt::Real)
+    stop_at_tdt = true
+    DiffEqBase.step!(integrator, dt, stop_at_tdt)
+end
+
 """
 # Notes
 - Currently, only iip (isinplace) method is supported.
@@ -33,10 +59,8 @@ function sim(state0, dyn, p=nothing;
     elseif saveat != nothing && savestep != nothing
         error("Assign values of either `saveat` or `savestep`")
     end
-    tspan = (t0, tf)
-    iip = true
     __dyn = (dx, x, p, t) -> dyn(dx, x, p, t)
-    prob = ODEProblem{iip}(__dyn, state0, tspan, p)  # true: isinplace
+    prob, tspan = make_problem(state0, __dyn, p, t0, tf)
     saved_values = SavedValues(Float64, Dict)
     cb_save = nothing
     if log_off == false
