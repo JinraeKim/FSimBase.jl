@@ -1,4 +1,42 @@
 """
+Initialise simulator.
+"""
+function _initialise(state0, __dyn, p, t0, tf)
+    tspan = (t0, tf)
+    iip = true
+    prob = ODEProblem{iip}(__dyn, state0, tspan, p)  # true: isinplace
+    prob, tspan
+end
+
+
+struct InteractiveSimulator
+    integrator::DEIntegrator
+    dt
+    function InteractiveSimulator(state0, dyn, p=nothing;
+            t0=0.0, tf=1.0, dt=0.01, solver=nothing, kwargs...,
+        )
+        prob, _ = _initialise(state0, dyn, p, t0, tf)
+        integrator = init(prob, solver; kwargs...)
+        integrator
+        new(integrator, dt)
+    end
+end
+
+"""
+Step `dt` time.
+"""
+function DiffEqBase.step!(simulator::InteractiveSimulator; dt=nothing, stop_at_tdt=true)
+    integrator = simulator.integrator
+    if dt == nothing
+        _dt = simulator.dt
+        @assert _dt != nothing
+        dt = _dt
+    end
+    DiffEqBase.step!(integrator, dt, stop_at_tdt)
+end
+
+
+"""
 Extended to deal with empty Dict.
 """
 function _namedtuple(x::Dict)
@@ -7,33 +45,6 @@ function _namedtuple(x::Dict)
     else
         return namedtuple(x)
     end
-end
-
-
-function make_problem(state0, __dyn, p, t0, tf)
-    tspan = (t0, tf)
-    iip = true
-    prob = ODEProblem{iip}(__dyn, state0, tspan, p)  # true: isinplace
-    prob, tspan
-end
-
-"""
-Make an integrator::DEIntegrator
-"""
-function sim_interactive(state0, dyn, p=nothing;
-        t0=0.0, tf=1.0, solver=nothing, kwargs...,
-    )
-    prob, _ = make_problem(state0, dyn, p, t0, tf)
-    integrator = init(prob, solver; kwargs...)
-    integrator
-end
-
-"""
-Step `dt` time.
-"""
-function DiffEqBase.step!(integrator::DEIntegrator, dt::Real)
-    stop_at_tdt = true
-    DiffEqBase.step!(integrator, dt, stop_at_tdt)
 end
 
 """
@@ -60,7 +71,7 @@ function sim(state0, dyn, p=nothing;
         error("Assign values of either `saveat` or `savestep`")
     end
     __dyn = (dx, x, p, t) -> dyn(dx, x, p, t)
-    prob, tspan = make_problem(state0, __dyn, p, t0, tf)
+    prob, tspan = _initialise(state0, __dyn, p, t0, tf)
     saved_values = SavedValues(Float64, Dict)
     cb_save = nothing
     if log_off == false
