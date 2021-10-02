@@ -36,7 +36,7 @@ Simulator struct
 struct Simulator
     integrator::DEIntegrator
     log_func::Function
-    df::DataFrame
+    # df::DataFrame
     function Simulator(state0, dyn, p=nothing;
             t0=0.0, tf=1.0, solver=nothing, kwargs...,
         )
@@ -54,9 +54,10 @@ struct Simulator
         end
         integrator = init(prob, solver; kwargs...)
         integrator
-        df = DataFrame()
-        _push!(df, integrator, log_func)  # initial logging
-        new(integrator, log_func, df)
+        # df = DataFrame()
+        # _push!(df, integrator, log_func)  # initial logging
+        # new(integrator, log_func, df)
+        new(integrator, log_func)
     end
 end
 
@@ -66,26 +67,26 @@ Reinitialise simulator.
 function DiffEqBase.reinit!(simulator::Simulator, args...; kwargs...)
     DiffEqBase.reinit!(simulator.integrator, args...; kwargs...)
     # initial logging
-    df = simulator.df
-    empty!(df)
-    log!(simulator)
+    # df = simulator.df
+    # empty!(df)
+    # log!(simulator)
     nothing
 end
 
 """
 Step `dt` time.
 """
-function DiffEqBase.step!(simulator::Simulator, Δt; stop_at_tdt=true, autosave=true)
+function DiffEqBase.step!(simulator::Simulator, Δt; stop_at_tdt=true)
     DiffEqBase.step!(simulator.integrator, Δt, stop_at_tdt)
-    if autosave
-        log!(simulator)
-    end
 end
 
 """
 Step until `tf`.
 """
-function step_until!(simulator::Simulator, tf; autosave=true)
+function step_until!(simulator::Simulator, tf;
+        df=nothing,
+        supress_termination_warn=true,
+    )
     integrator = simulator.integrator
     t = integrator.t
     _tf = integrator.sol.prob.tspan[2]
@@ -94,9 +95,14 @@ function step_until!(simulator::Simulator, tf; autosave=true)
         tf = _tf
     end
     if t ≈ tf 
-        @warn("step! ignored; simulator seems already terminated")
+        if !supress_termination_warn
+            @warn("step! ignored; simulator seems already terminated")
+        end
     else
-        DiffEqBase.step!(simulator, tf - t; autosave=autosave)
+        DiffEqBase.step!(simulator, tf - t)
+        if df !=nothing
+            log!(df, simulator)
+        end
     end
 end
 
@@ -108,7 +114,7 @@ function _push!(df::DataFrame, integrator::DEIntegrator, log_func)
     push!(df, (; time=t, sol=__log_nt__))
 end
 
-function log!(simulator::Simulator, df=simulator.df)
+function log!(df::DataFrame, simulator::Simulator)
     integrator = simulator.integrator
     log_func = simulator.log_func
     _push!(df, integrator, log_func)
@@ -188,13 +194,17 @@ function DiffEqBase.solve(simulator::Simulator;
     #     return prob, sol
     # else
         # recursive NamedTuple conversion from Dict; https://discourse.julialang.org/t/how-to-make-a-named-tuple-from-a-dictionary/10899/34?u=ihany
+        # simulator.df[!, :time] = saved_values.t
+        # simulator.df[!, :sol] = saved_values.saveval |> Map(recursive_namedtuple) |> collect
         df = DataFrame(
                        time = saved_values.t,
                        sol = saved_values.saveval |> Map(recursive_namedtuple) |> collect,
                       )
         # return prob, df
-        return df
+        # return df
     # end
+    # simulator.df
+    df
 end
 
 

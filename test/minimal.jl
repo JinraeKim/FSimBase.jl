@@ -3,6 +3,7 @@ using DifferentialEquations
 using ComponentArrays
 using Test
 using LinearAlgebra
+using DataFrames
 
 
 function main()
@@ -20,21 +21,26 @@ function main()
                           tf=tf, solver=Tsit5(),
                          )
     # solve approach (automatically reinitialised)
-    @time df = solve(simulator;
+    @time _df = solve(simulator;
+                     savestep=Δt,
+                    )
+    @time _df = solve(simulator;
                      savestep=Δt,
                     )
     # interactive simulation
     ## step!
+    df = DataFrame()
     reinit!(simulator)
     step!(simulator, Δt)
     @test simulator.integrator.t ≈ Δt
     ## step_until!
     reinit!(simulator)
     ts_weird = 0:Δt:tf+Δt
-    @time for t in ts_weird[2:end]
-        step_until!(simulator, t; autosave=true)
+    @time for t in ts_weird
+        step_until!(simulator, t; df=df)
     end
-    @test norm(df.sol[end].x - simulator.df.sol[end].x) < 1e-6
+    @show df
+    @test norm(_df.sol[end].x - df.sol[end].x) < 1e-6
     @test simulator.integrator.t ≈ tf
 end
 

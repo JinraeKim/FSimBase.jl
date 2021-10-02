@@ -55,10 +55,20 @@ User can extend these methods or simply define other methods.
 - (Optional) `Params(env::AbstractEnv)`: returns structured parameters of given environment `env`.
 
 ### Simulation, logging, and data saving & loading
-**Main APIs**
-- `sim(x0, dyn, p=nothing; kwargs...)`
-    - return `prob::DEProblem` and `df::DataFrame`.
+**Simulator**
+- `Simulator(state0, dyn, p)` is a simulator struct that will be simulated by `solve` (non-interactive) or `step!` and `step_until!` (interactive).
+For more details, see `src/APIs/simulation.jl`.
+
+**Non-interactive interface (e.g., compatible with callbacks from DifferentialEquations.jl)**
+- `solve(simulation::Simulator)` will solve (O)DE and provide `df::DataFrame`.
     - For now, only [**in-place** method (iip)](https://diffeq.sciml.ai/stable/basics/problem/#In-place-vs-Out-of-Place-Function-Definition-Forms) is supported.
+
+**Interactive interface (similar to `integrator` interface in DifferentialEquations.jl)**
+- `reinit!(simulator::Simulator)` will reinitialise `simulator::Simulator`.
+- `step!(simulator::Simulator, Δt; stop_at_tdt=true)` will step the `simulator::Simulator` as `Δt`.
+- `step_until!` will step the `simulator::Simulator` until `tf`. **Data will be saved in `df::DataFrame` if the keyword argument `df` is provided.**
+
+**Utilities**
 - `apply_inputs(func; kwargs...)`
     - By using this, user can easily apply external inputs into environments. It is borrowed from [an MRAC example of ComponentArrays.jl](https://jonniedie.github.io/ComponentArrays.jl/stable/examples/adaptive_control/) and extended to be compatible with [SimulationLogger.jl](https://github.com/JinraeKim/SimulationLogger.jl).
     - (Limitations) for now, dynamical equations wrapped by `apply_inputs` will automatically generate logging function (even without `@Loggable`). In this case, all data will be an array of empty `NamedTuple`.
@@ -70,30 +80,57 @@ User can extend these methods or simply define other methods.
 ### (TL; DR) Minimal example
 ```julia
 using FSimBase
-const FSBase = FSimBase
 using DifferentialEquations
-using SimulationLogger: @log
-
 using ComponentArrays
+using Test
+using LinearAlgebra
+using DataFrames
 
 
 function main()
     state0 = [1, 2]
     p = 1
+    tf = 1.0
+    Δt = 0.01
     @Loggable function dynamics!(dx, x, p, t)
         @log t
         @log x
         dx .= -p.*x
     end
-    prob, df = FSimBase.sim(state0, dynamics!, p;
-                            solver=Tsit5(),
-                            tf=10.0,
-                           )
-    df
+    simulator = Simulator(
+                          state0, dynamics!, p;
+                          tf=tf, solver=Tsit5(),
+                         )
+    # solve approach (automatically reinitialised)
+    @time _df = solve(simulator;
+                     savestep=Δt,
+                    )
+    @time _df = solve(simulator;
+                     savestep=Δt,
+                    )
+    # interactive simulation
+    ## step!
+    df = DataFrame()
+    reinit!(simulator)
+    step!(simulator, Δt)
+    @test simulator.integrator.t ≈ Δt
+    ## step_until!
+    reinit!(simulator)
+    ts_weird = 0:Δt:tf+Δt
+    @time for t in ts_weird
+        step_until!(simulator, t; df=df)
+    end
+    @show df
+    @test norm(_df.sol[end].x - df.sol[end].x) < 1e-6
+    @test simulator.integrator.t ≈ tf
+end
+
+@testset "minimal" begin
+    main()
 end
 ```
 
-### (TL; DR) Toy example
+### (TL; DR) Toy example (to-do)
 ```julia
 using FSimBase
 
