@@ -67,7 +67,7 @@ function main()
     # save
     dir_log = "figures"
     mkpath(dir_log)
-    savefig(p_x, joinpath(dir_log, "toy_example.png"))
+    savefig(p_x, joinpath(dir_log, "custom_example.png"))
     display(p_x)
 end
 

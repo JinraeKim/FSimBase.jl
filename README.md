@@ -65,8 +65,10 @@ For more details, see `src/APIs/simulation.jl`.
 
 **Interactive interface (similar to `integrator` interface in DifferentialEquations.jl)**
 - `reinit!(simulator::Simulator)` will reinitialise `simulator::Simulator`.
-- `step!(simulator::Simulator, Δt; stop_at_tdt=true)` will step the `simulator::Simulator` as `Δt`.
-- `step_until!` will step the `simulator::Simulator` until `tf`. **Data will be saved in `df::DataFrame` if the keyword argument `df` is provided.**
+- `step!(simulator::Simulator, Δt, df=nothing; stop_at_tdt=true)` will step the `simulator::Simulator` as `Δt`.
+**Data will be pushed into `df::DataFrame` if the argument `df` is provided.**
+- `step_until!(simulator::Simulator, tf, df=nothing)` will step the `simulator::Simulator` until `tf`.
+**Data will be pushed into `df::DataFrame` if the argument `df` is provided.**
 
 **Utilities**
 - `apply_inputs(func; kwargs...)`
@@ -102,23 +104,18 @@ function main()
                           tf=tf, solver=Tsit5(),
                          )
     # solve approach (automatically reinitialised)
-    @time _df = solve(simulator;
-                     savestep=Δt,
-                    )
-    @time _df = solve(simulator;
-                     savestep=Δt,
-                    )
+    @time _df = solve(simulator; savestep=Δt)
     # interactive simulation
     ## step!
-    df = DataFrame()
     reinit!(simulator)
     step!(simulator, Δt)
     @test simulator.integrator.t ≈ Δt
     ## step_until!
-    reinit!(simulator)
     ts_weird = 0:Δt:tf+Δt
+    df = DataFrame()
+    reinit!(simulator)
     @time for t in ts_weird
-        step_until!(simulator, t; df=df)
+        step_until!(simulator, t, df)  # log data at the third element
     end
     @show df
     @test norm(_df.sol[end].x - df.sol[end].x) < 1e-6
@@ -130,7 +127,7 @@ end
 end
 ```
 
-### (TL; DR) Toy example (to-do)
+### (TL; DR) An example with custom environments
 ```julia
 using FSimBase
 
@@ -140,6 +137,7 @@ using UnPack
 using Transducers
 using Plots
 using DifferentialEquations
+using Test
 
 
 struct MyEnv <: AbstractEnv  # AbstractEnv exported from FSimBase
@@ -184,33 +182,31 @@ function main()
     Δt = 0.01
     x10, x20 = 10.0, 0.0
     x0 = State(env)(x10, x20)
-    # prob: DE problem, df: DataFrame
-    @time prob, df = sim(
-                         x0,  # initial condition
-                         apply_inputs(Dynamics!(env); u=my_controller);  # dynamics!; apply_inputs is exported from FSimBase and is so useful for systems with inputs
-                         solver=Tsit5(),
-                         tf=10.0,
-                         savestep=Δt,  # savestep is NOT simulation step
-                        )  # sim is exported from FSimBase
+    # simulator
+    simulator = Simulator(
+                          x0, apply_inputs(Dynamics!(env); u=my_controller);
+                          tf=tf, solver=Tsit5(),
+                         )
+    @time df = solve(simulator; savestep=Δt)
     ts = df.time
     x1s = df.sol |> Map(datum -> datum.x1) |> collect
     x2s = df.sol |> Map(datum -> datum.x2) |> collect
     # plot
-    p_x1 = plot(ts, x1s;
-                label="x1",
-               )
-    p_x2 = plot(ts, x2s;
-                label="x2",
-               )
+    p_x1 = plot(ts, x1s; label="x1")
+    p_x2 = plot(ts, x2s; label="x2")
     p_x = plot(p_x1, p_x2, layout=(2, 1))
     # save
     dir_log = "figures"
     mkpath(dir_log)
-    savefig(p_x, joinpath(dir_log, "toy_example.png"))
+    savefig(p_x, joinpath(dir_log, "custom_example.png"))
     display(p_x)
 end
+
+@testset "custom_example" begin
+    main()
+end
 ```
-![ex_screenshot](./figures/toy_example.png)
+![ex_screenshot](./figures/custom_example.png)
 
 
 

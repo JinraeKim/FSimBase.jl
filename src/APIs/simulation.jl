@@ -69,33 +69,31 @@ end
 """
 Step `dt` time.
 """
-function DiffEqBase.step!(simulator::Simulator, Δt; stop_at_tdt=true)
+function DiffEqBase.step!(simulator::Simulator, Δt, df=nothing; stop_at_tdt=true)
     DiffEqBase.step!(simulator.integrator, Δt, stop_at_tdt)
+    if df !=nothing
+        log!(df, simulator)
+    end
 end
 
 """
 Step until `tf`.
 """
-function ⪆(a, b; kwargs...)
-    (a >= b) || isapprox(a, b; kwargs...)
-end
-
-function ⪅(a, b; kwargs...)
-    (a <= b) || isapprox(a, b; kwargs...)
-end
-
 function step_until!(simulator::Simulator, tf, df=nothing;
-        supress_termination_warn=true,
+        suppress_termination_warn=true,
+        suppress_truncation_warn=false,
     )
     integrator = simulator.integrator
     t = integrator.t
     _tf = integrator.sol.prob.tspan[2]
     if (simulator.integrator.tdir > 0 && _tf < tf) || (simulator.integrator.tdir < 0 && _tf > tf)
-        @warn("step! truncated up to tf = $(_tf)")
+        if !suppress_truncation_warn
+            @warn("step! truncated up to tf = $(_tf)")
+        end
         tf = _tf
     end
     if tf ≈ t
-        if !supress_termination_warn
+        if !suppress_termination_warn
             @warn("step! ignored; simulator seems already terminated")
         end
     else
