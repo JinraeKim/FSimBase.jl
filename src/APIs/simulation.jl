@@ -52,7 +52,8 @@ struct Simulator
             __log_indicator__ = __LOG_INDICATOR__()  # just an indicator for logging
             log_func = function (x, t, integrator::DEIntegrator; kwargs...)
                 x = copy(integrator.u)  # `x` merely denotes a "view"
-                p = applicable(copy, integrator.p) ? copy(integrator.p) : integrator.p
+                # p = applicable(copy, integrator.p) ? copy(integrator.p) : integrator.p
+                p = integrator.p
                 dyn(zero.(x), x, p, t, __log_indicator__; kwargs...)
             end
         end
