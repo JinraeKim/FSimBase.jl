@@ -49,8 +49,9 @@ struct Simulator
         if hasmethod(dyn, Tuple{Any, Any, Any, Any, __LOG_INDICATOR__})
             __log_indicator__ = __LOG_INDICATOR__()  # just an indicator for logging
             log_func = function (x, t, integrator::DEIntegrator; kwargs...)
-                x = copy(x)  # `x` merely denotes a "view"
-                dyn(zero.(x), x, integrator.p, t, __log_indicator__; kwargs...)
+                x = copy(integrator.u)  # `x` merely denotes a "view"
+                p = copy(integrator.p)  # `x` merely denotes a "view"
+                dyn(zero.(x), x, p, t, __log_indicator__; kwargs...)
             end
         end
         integrator = init(prob, solver; kwargs...)
