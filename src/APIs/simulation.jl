@@ -51,7 +51,7 @@ struct Simulator
         if hasmethod(dyn, Tuple{Any, Any, Any, Any, __LOG_INDICATOR__})
             __log_indicator__ = __LOG_INDICATOR__()  # just an indicator for logging
             log_func = function (x, t, integrator::DEIntegrator; kwargs...)
-                # x = copy(x)  # `x` merely denotes a "view"; DO NOT copy(integrator.u)
+                x = copy(x)  # `x` merely denotes a "view"; DO NOT copy(integrator.u); if you replace it by copy(integrator.u), we will get step-like responses
                 p = applicable(copy, integrator.p) ? copy(integrator.p) : integrator.p
                 dyn(zero.(x), x, p, t, __log_indicator__; kwargs...)
             end
