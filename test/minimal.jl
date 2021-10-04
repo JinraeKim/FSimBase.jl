@@ -21,23 +21,18 @@ function main()
                           tf=tf, solver=Tsit5(),
                          )
     # solve approach (automatically reinitialised)
-    @time _df = solve(simulator;
-                     savestep=Δt,
-                    )
-    @time _df = solve(simulator;
-                     savestep=Δt,
-                    )
+    @time _df = solve(simulator; savestep=Δt)
     # interactive simulation
     ## step!
-    df = DataFrame()
     reinit!(simulator)
     step!(simulator, Δt)
     @test simulator.integrator.t ≈ Δt
     ## step_until!
-    reinit!(simulator)
     ts_weird = 0:Δt:tf+Δt
+    df = DataFrame()
+    reinit!(simulator)
     @time for t in ts_weird
-        step_until!(simulator, t; df=df)
+        step_until!(simulator, t, df)  # log data at the third element
     end
     @show df
     @test norm(_df.sol[end].x - df.sol[end].x) < 1e-6
