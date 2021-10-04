@@ -37,7 +37,8 @@ struct Simulator
     integrator::DEIntegrator
     log_func::Union{Function, Nothing}
     # df::DataFrame
-    function Simulator(state0, dyn, solver, p=nothing;
+    function Simulator(state0, dyn, p=nothing;
+            solver=nothing,
             t0=0.0, tf=1.0, kwargs...,
         )
         # DEProblem

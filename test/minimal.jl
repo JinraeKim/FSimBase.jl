@@ -17,7 +17,8 @@ function main()
         dx .= -p.*x
     end
     simulator = Simulator(
-                          state0, dynamics!, Tsit5(), p;
+                          state0, dynamics!, p;
+                          solver=Tsit5(),
                           tf=tf,
                          )
     # solve approach (automatically reinitialised)
