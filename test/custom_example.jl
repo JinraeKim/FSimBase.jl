@@ -53,8 +53,8 @@ function main()
     x0 = State(env)(x10, x20)
     # simulator
     simulator = Simulator(
-                          x0, apply_inputs(Dynamics!(env); u=my_controller);
-                          tf=tf, solver=Tsit5(),
+                          x0, apply_inputs(Dynamics!(env); u=my_controller), Tsit5();
+                          tf=tf,
                          )
     @time df = solve(simulator; savestep=Δt)
     ts = df.time
