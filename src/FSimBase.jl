@@ -16,7 +16,7 @@ export AbstractEnv, State, Params, Dynamics, Dynamics!
 export AbstractController, Command
 export sim, apply_inputs
 export Simulator
-export reinit!, log!, solve!, step!, step_until!
+export solve, reinit!, log!, step!, step_until!
 
 
 include("APIs/APIs.jl")
