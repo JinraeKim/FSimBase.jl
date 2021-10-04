@@ -131,7 +131,7 @@ This method will automatically reinitialise `simulator`.
 """
 function DiffEqBase.solve(simulator::Simulator;
         saveat=nothing,
-        savestep=0.01,
+        savestep=nothing,
         callback::DECallback=CallbackSet(),
         kwargs...,
     )
@@ -156,8 +156,8 @@ function DiffEqBase.solve(simulator::Simulator;
         callback = CallbackSet(callback, cb_save)  # save values "after all other callbacks"
     end
     _ = solve(prob, solver;
-                callback=callback,
-                kwargs...)
+              callback=callback,
+              kwargs...)
     df = DataFrame(
                    time = saved_values.t,
                    sol = saved_values.saveval |> Map(recursive_namedtuple) |> collect,
