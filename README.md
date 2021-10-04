@@ -9,13 +9,6 @@ For more functionality, see [FlightSims.jl](https://github.com/JinraeKim/FlightS
 - In [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl),
 you must specify [the differential equation solver](https://diffeq.sciml.ai/stable/#Solver-Algorithms).
 
-For example, 
-```julia
-using OrdinaryDiffEq
-# ...
-prob, df = sim(state0, dyn, p; solver=Tsit5())
-```
-
 ## APIs
 Main APIs are provided in `src/APIs`.
 
@@ -100,8 +93,8 @@ function main()
         dx .= -p.*x
     end
     simulator = Simulator(
-                          state0, dynamics!, p;
-                          tf=tf, solver=Tsit5(),
+                          state0, dynamics!, Tsit5(), p;
+                          tf=tf,
                          )
     # solve approach (automatically reinitialised)
     @time _df = solve(simulator; savestep=Δt)
@@ -184,8 +177,8 @@ function main()
     x0 = State(env)(x10, x20)
     # simulator
     simulator = Simulator(
-                          x0, apply_inputs(Dynamics!(env); u=my_controller);
-                          tf=tf, solver=Tsit5(),
+                          x0, apply_inputs(Dynamics!(env); u=my_controller), Tsit5();
+                          tf=tf,
                          )
     @time df = solve(simulator; savestep=Δt)
     ts = df.time
