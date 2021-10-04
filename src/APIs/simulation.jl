@@ -31,7 +31,9 @@ end
 
 
 """
-Simulator struct
+Simulator struct.
+# NOTICE
+- If `p` is not copyable, i.e., `applicable(copy, p) == false`, it would not correctly be logged in log_func.
 """
 struct Simulator
     integrator::DEIntegrator
@@ -50,7 +52,7 @@ struct Simulator
             __log_indicator__ = __LOG_INDICATOR__()  # just an indicator for logging
             log_func = function (x, t, integrator::DEIntegrator; kwargs...)
                 x = copy(integrator.u)  # `x` merely denotes a "view"
-                p = copy(integrator.p)  # `x` merely denotes a "view"
+                p = applicable(copy, integrator.p) ? copy(integrator.p) : integrator.p
                 dyn(zero.(x), x, p, t, __log_indicator__; kwargs...)
             end
         end
