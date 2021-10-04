@@ -48,13 +48,17 @@ struct Simulator
         prob = _initialise(state0, __dyn, p, t0, tf)
         log_func = nothing
         # save func (logging func)
-        if hasmethod(dyn, Tuple{Any, Any, Any, Any, __LOG_INDICATOR__})
+        if isinplace(prob)
             __log_indicator__ = __LOG_INDICATOR__()  # just an indicator for logging
-            log_func = function (x, t, integrator::DEIntegrator; kwargs...)
-                x = copy(integrator.u)  # `x` merely denotes a "view"
-                p = applicable(copy, integrator.p) ? copy(integrator.p) : integrator.p
-                dyn(zero.(x), x, p, t, __log_indicator__; kwargs...)
+            if hasmethod(dyn, Tuple{Any, Any, Any, Any, __LOG_INDICATOR__})
+                log_func = function (x, t, integrator::DEIntegrator; kwargs...)
+                    x = copy(integrator.u)  # `x` merely denotes a "view"
+                    p = applicable(copy, integrator.p) ? copy(integrator.p) : integrator.p
+                    dyn(zero.(x), x, p, t, __log_indicator__; kwargs...)
+                end
             end
+        else
+            error("Not tested")
         end
         integrator = init(prob, solver; kwargs...)
         integrator
