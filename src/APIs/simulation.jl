@@ -131,7 +131,7 @@ This method will automatically reinitialise `simulator`.
 """
 function DiffEqBase.solve(simulator::Simulator;
         saveat=nothing,
-        savestep=nothing,
+        savestep=0.01,
         callback::DECallback=CallbackSet(),
         kwargs...,
     )
