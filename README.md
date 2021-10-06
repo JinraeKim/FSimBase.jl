@@ -56,7 +56,7 @@ For more details, see `src/APIs/simulation.jl`.
 - `solve(simulation::Simulator)` will solve (O)DE and provide `df::DataFrame`.
     - For now, only [**in-place** method (iip)](https://diffeq.sciml.ai/stable/basics/problem/#In-place-vs-Out-of-Place-Function-Definition-Forms) is supported.
 
-**Interactive interface (similar to `integrator` interface in DifferentialEquations.jl)**
+**Interactive interface (you should be aware of how to use [`integrator` interface in DifferentialEquations.jl](https://diffeq.sciml.ai/stable/basics/integrator/#integrator))**
 - `reinit!(simulator::Simulator)` will reinitialise `simulator::Simulator`.
 - `step!(simulator::Simulator, Δt, df=nothing; stop_at_tdt=true)` will step the `simulator::Simulator` as `Δt`.
 **Data will be pushed into `df::DataFrame` if the argument `df` is provided.**
