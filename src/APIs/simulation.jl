@@ -73,20 +73,18 @@ end
 """
 Step `dt` time.
 """
-function DiffEqBase.step!(simulator::Simulator, Δt, df=nothing; stop_at_tdt=true)
+function DiffEqBase.step!(simulator::Simulator, Δt; stop_at_tdt=true)
     DiffEqBase.step!(simulator.integrator, Δt, stop_at_tdt)
-    if df !=nothing
-        log!(df, simulator)
-    end
 end
 
 """
 Step until `tf`.
 """
-function step_until!(simulator::Simulator, tf, df=nothing;
+function step_until!(simulator::Simulator, tf;
         suppress_termination_warn=true,
         suppress_truncation_warn=false,
     )
+    success = true
     integrator = simulator.integrator
     t = integrator.t
     _tf = integrator.sol.prob.tspan[2]
@@ -100,12 +98,11 @@ function step_until!(simulator::Simulator, tf, df=nothing;
         if !suppress_termination_warn
             @warn("step! ignored; simulator seems already terminated")
         end
+        success = false
     else
         DiffEqBase.step!(simulator, tf - t)
-        if df !=nothing
-            log!(df, simulator)
-        end
     end
+    success
 end
 
 function _push!(df::DataFrame, integrator::DEIntegrator, log_func)
@@ -116,10 +113,12 @@ function _push!(df::DataFrame, integrator::DEIntegrator, log_func)
     push!(df, (; time=t, sol=__log_nt__))
 end
 
-function log!(df::DataFrame, simulator::Simulator)
-    integrator = simulator.integrator
-    log_func = simulator.log_func
-    _push!(df, integrator, log_func)
+function Base.push!(simulator::Simulator, df::DataFrame, flag=true)
+    if flag
+        integrator = simulator.integrator
+        log_func = simulator.log_func
+        _push!(df, integrator, log_func)
+    end
 end
 
 

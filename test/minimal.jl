@@ -28,14 +28,26 @@ function main()
     reinit!(simulator)
     step!(simulator, Δt)
     @test simulator.integrator.t ≈ Δt
-    ## step_until!
+    ## step_until! (callback-like)
     ts_weird = 0:Δt:tf+Δt
+    df_ = DataFrame()
+    reinit!(simulator)
+    @time for t in ts_weird
+        flag = step_until!(simulator, t)  # flag == false if step is inappropriate
+        if simulator.integrator.u[1] < 5e-1
+            break
+        else
+            push!(simulator, df_, flag)  # push data only when flag == true
+        end
+    end
+    println(df_[end-5:end, :])
+    ## step_until!
     df = DataFrame()
     reinit!(simulator)
     @time for t in ts_weird
-        step_until!(simulator, t, df)  # log data at the third element
+        push!(simulator, df, step_until!(simulator, t))  # compact form
     end
-    @show df
+    println(df[end-5:end, :])
     @test norm(_df.sol[end].x - df.sol[end].x) < 1e-6
     @test simulator.integrator.t ≈ tf
 end

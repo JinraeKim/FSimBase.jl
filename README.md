@@ -58,10 +58,9 @@ For more details, see `src/APIs/simulation.jl`.
 
 **Interactive interface (you should be aware of how to use [`integrator` interface in DifferentialEquations.jl](https://diffeq.sciml.ai/stable/basics/integrator/#integrator))**
 - `reinit!(simulator::Simulator)` will reinitialise `simulator::Simulator`.
-- `step!(simulator::Simulator, Δt, df=nothing; stop_at_tdt=true)` will step the `simulator::Simulator` as `Δt`.
-**Data will be pushed into `df::DataFrame` if the argument `df` is provided.**
-- `step_until!(simulator::Simulator, tf, df=nothing)` will step the `simulator::Simulator` until `tf`.
-**Data will be pushed into `df::DataFrame` if the argument `df` is provided.**
+- `step!(simulator::Simulator, Δt; stop_at_tdt=true)` will step the `simulator::Simulator` as `Δt`.
+- `step_until!(simulator::Simulator, tf)` will step the `simulator::Simulator` until `tf`.
+- `push!(simulator::Simulator, df::DataFrame)` will push a datum from `simulator` to `df`.
 
 **Utilities**
 - `apply_inputs(func; kwargs...)`
@@ -93,7 +92,8 @@ function main()
         dx .= -p.*x
     end
     simulator = Simulator(
-                          state0, dynamics!, Tsit5(), p;
+                          state0, dynamics!, p;
+                          solver=Tsit5(),
                           tf=tf,
                          )
     # solve approach (automatically reinitialised)
@@ -103,99 +103,31 @@ function main()
     reinit!(simulator)
     step!(simulator, Δt)
     @test simulator.integrator.t ≈ Δt
-    ## step_until!
+    ## step_until! (callback-like)
     ts_weird = 0:Δt:tf+Δt
+    df_ = DataFrame()
+    reinit!(simulator)
+    @time for t in ts_weird
+        flag = step_until!(simulator, t)  # flag == false if step is inappropriate
+        if simulator.integrator.u[1] < 5e-1
+            break
+        else
+            push!(simulator, df_, flag)  # push data only when flag == true
+        end
+    end
+    println(df_[end-5:end, :])
+    ## step_until!
     df = DataFrame()
     reinit!(simulator)
     @time for t in ts_weird
-        step_until!(simulator, t, df)  # log data at the third element
+        push!(simulator, df, step_until!(simulator, t))  # compact form
     end
-    @show df
+    println(df[end-5:end, :])
     @test norm(_df.sol[end].x - df.sol[end].x) < 1e-6
     @test simulator.integrator.t ≈ tf
 end
 
 @testset "minimal" begin
-    main()
-end
-```
-
-### (TL; DR) An example with custom environments
-```julia
-using FSimBase
-
-using LinearAlgebra  # for I, e.g., Matrix(I, n, n)
-using ComponentArrays
-using UnPack
-using Transducers
-using Plots
-using DifferentialEquations
-using Test
-
-
-struct MyEnv <: AbstractEnv  # AbstractEnv exported from FSimBase
-    a
-    b
-end
-
-"""
-FlightSims recommends you to use closures for State and Dynamics!. For more details, see https://docs.julialang.org/en/v1/devdocs/functions/.
-"""
-function State(env::MyEnv)
-    return function (x1::Number, x2::Number)
-        ComponentArray(x1=x1, x2=x2)
-    end
-end
-
-function Dynamics!(env::MyEnv)
-    @unpack a, b = env  # @unpack is very useful!
-    @Loggable function dynamics!(dx, x, p, t; u)  # `Loggable` makes it loggable via SimulationLogger.jl (imported in FSimBase)
-        @unpack x1, x2 = x
-        @log x1  # to log x1
-        @log x2  # to log x2
-        dx.x1 = a*x2
-        dx.x2 = b*u
-    end
-end
-
-function my_controller(x, p, t)
-    @unpack x1, x2 = x
-    -(x1+x2)
-end
-
-
-function main()
-    n = 2
-    m = 1
-    a, b = 1, 1
-    A = -Matrix(I, n, n)
-    B = Matrix(I, m, m)
-    env = MyEnv(a, b)
-    tf = 10.0
-    Δt = 0.01
-    x10, x20 = 10.0, 0.0
-    x0 = State(env)(x10, x20)
-    # simulator
-    simulator = Simulator(
-                          x0, apply_inputs(Dynamics!(env); u=my_controller), Tsit5();
-                          tf=tf,
-                         )
-    @time df = solve(simulator; savestep=Δt)
-    ts = df.time
-    x1s = df.sol |> Map(datum -> datum.x1) |> collect
-    x2s = df.sol |> Map(datum -> datum.x2) |> collect
-    # plot
-    p_x1 = plot(ts, x1s; label="x1")
-    p_x2 = plot(ts, x2s; label="x2")
-    p_x = plot(p_x1, p_x2, layout=(2, 1))
-    # save
-    dir_log = "figures"
-    mkpath(dir_log)
-    savefig(p_x, joinpath(dir_log, "custom_example.png"))
-    display(p_x)
-end
-
-@testset "custom_example" begin
     main()
 end
 ```
