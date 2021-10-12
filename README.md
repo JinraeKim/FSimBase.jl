@@ -120,7 +120,13 @@ function main()
     df = DataFrame()
     reinit!(simulator)
     @time for t in ts_weird
-        push!(simulator, df, step_until!(simulator, t))  # compact form
+        step_until!(simulator, t)
+        push!(simulator, df)  # flag=true is default
+        # safer way:
+        # flag = step_until!(simulator, t)
+        # push!(simulator, df, flag)
+        # or, equivalently,
+        # push!(simulator, df, step_until!(simulator, t))  # compact form
     end
     println(df[end-5:end, :])
     @test norm(_df.sol[end].x - df.sol[end].x) < 1e-6
