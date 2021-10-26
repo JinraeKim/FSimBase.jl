@@ -54,6 +54,7 @@ function main()
     # simulator
     simulator = Simulator(
                           x0, apply_inputs(Dynamics!(env); u=my_controller);
+                          Problem=ODEProblem,
                           solver=Tsit5(),
                           tf=tf,
                          )

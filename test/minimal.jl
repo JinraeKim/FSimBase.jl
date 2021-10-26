@@ -7,7 +7,7 @@ using DataFrames
 
 
 function main()
-    state0 = [1, 2]
+    state0 = [1.0, 2.0]
     p = 1
     tf = 1.0
     Δt = 0.01
@@ -18,6 +18,7 @@ function main()
     end
     simulator = Simulator(
                           state0, dynamics!, p;
+                          Problem=ODEProblem,
                           solver=Tsit5(),
                           tf=tf,
                          )

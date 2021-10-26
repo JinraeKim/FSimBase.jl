@@ -7,7 +7,8 @@ compatible with [DifferentialEquations.jl](https://github.com/SciML/Differential
 - [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) **works alone**!
 For more functionality, see [FlightSims.jl](https://github.com/JinraeKim/FlightSims.jl).
 - In [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl),
-you must specify [the differential equation solver](https://diffeq.sciml.ai/stable/#Solver-Algorithms).
+you must specify [the differential equation problem](https://diffeq.sciml.ai/stable/solvers/discrete_solve/#DiscreteProblems) and [the differential equation solver](https://diffeq.sciml.ai/stable/#Solver-Algorithms).
+Only `ODEProblem` and `DiscreteProblem` are tested.
 
 ## APIs
 Main APIs are provided in `src/APIs`.
@@ -49,7 +50,7 @@ User can extend these methods or simply define other methods.
 
 ### Simulation, logging, and data saving & loading
 **Simulator**
-- `Simulator(state0, dyn, p)` is a simulator struct that will be simulated by `solve` (non-interactive) or `step!` and `step_until!` (interactive).
+- `Simulator(state0, dyn, p; Problem, solver)` is a simulator struct that will be simulated by `solve` (non-interactive) or `step!` and `step_until!` (interactive).
 For more details, see `src/APIs/simulation.jl`.
 
 **Non-interactive interface (e.g., compatible with callbacks from DifferentialEquations.jl)**
@@ -71,6 +72,9 @@ For more details, see `src/APIs/simulation.jl`.
 
 ## Examples
 
+### Custom environments, discrete problems, etc.
+See directory `./test`.
+
 ### (TL; DR) Minimal example
 ```julia
 using FSimBase
@@ -82,7 +86,7 @@ using DataFrames
 
 
 function main()
-    state0 = [1, 2]
+    state0 = [1.0, 2.0]
     p = 1
     tf = 1.0
     Δt = 0.01
@@ -93,6 +97,7 @@ function main()
     end
     simulator = Simulator(
                           state0, dynamics!, p;
+                          Problem=ODEProblem,
                           solver=Tsit5(),
                           tf=tf,
                          )
