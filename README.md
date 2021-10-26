@@ -51,6 +51,7 @@ User can extend these methods or simply define other methods.
 ### Simulation, logging, and data saving & loading
 **Simulator**
 - `Simulator(state0, dyn, p; Problem, solver)` is a simulator struct that will be simulated by `solve` (non-interactive) or `step!` and `step_until!` (interactive).
+`Problem = :ODE` and `Problem = :Discrete` imply [`ODEProblem`](https://diffeq.sciml.ai/stable/types/ode_types/) and [`DiscreteProblem`](https://diffeq.sciml.ai/stable/types/discrete_types/#Discrete-Problems), respectively.
 For more details, see `src/APIs/simulation.jl`.
 
 **Non-interactive interface (e.g., compatible with callbacks from DifferentialEquations.jl)**
