@@ -1,9 +1,16 @@
 """
 Initialise simulator.
 """
-function _initialise(Problem, state0, __dyn, p, t0, tf)
+function _initialise(__Problem, state0, __dyn, p, t0, tf)
     tspan = (t0, tf)
     iip = true
+    if __Problem == :ODE
+        Problem = ODEProblem
+    elseif __Problem == :Discrete
+        Problem = DiscreteProblem
+    else
+        error("Not supported Problem: $(__Problem)")
+    end
     prob = Problem{iip}(__dyn, state0, tspan, p)  # true: isinplace
     prob
 end
@@ -41,7 +48,7 @@ struct Simulator
     # df::DataFrame
     function Simulator(state0, dyn, p=nothing;
             solver=nothing,
-            Problem=nothing,
+            Problem=:ODE,
             t0=0.0, tf=1.0, kwargs...,
         )
         # DEProblem
