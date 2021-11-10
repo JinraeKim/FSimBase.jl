@@ -7,14 +7,8 @@ compatible with [DifferentialEquations.jl](https://github.com/SciML/Differential
 - [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl) **works alone**!
 For more functionality, see [FlightSims.jl](https://github.com/JinraeKim/FlightSims.jl).
 - In [FSimBase.jl](https://github.com/JinraeKim/FSimBase.jl),
-you must specify [the differential equation solver](https://diffeq.sciml.ai/stable/#Solver-Algorithms).
-
-For example, 
-```julia
-using OrdinaryDiffEq
-# ...
-prob, df = sim(state0, dyn, p; solver=Tsit5())
-```
+you must specify [the differential equation problem](https://diffeq.sciml.ai/stable/solvers/discrete_solve/#DiscreteProblems) and [the differential equation solver](https://diffeq.sciml.ai/stable/#Solver-Algorithms).
+Only `ODEProblem` and `DiscreteProblem` are tested.
 
 ## APIs
 Main APIs are provided in `src/APIs`.
@@ -55,10 +49,22 @@ User can extend these methods or simply define other methods.
 - (Optional) `Params(env::AbstractEnv)`: returns structured parameters of given environment `env`.
 
 ### Simulation, logging, and data saving & loading
-**Main APIs**
-- `sim(x0, dyn, p=nothing; kwargs...)`
-    - return `prob::DEProblem` and `df::DataFrame`.
+**Simulator**
+- `Simulator(state0, dyn, p; Problem, solver)` is a simulator struct that will be simulated by `solve` (non-interactive) or `step!` and `step_until!` (interactive).
+`Problem = :ODE` and `Problem = :Discrete` imply [`ODEProblem`](https://diffeq.sciml.ai/stable/types/ode_types/) and [`DiscreteProblem`](https://diffeq.sciml.ai/stable/types/discrete_types/#Discrete-Problems), respectively.
+For more details, see `src/APIs/simulation.jl`.
+
+**Non-interactive interface (e.g., compatible with callbacks from DifferentialEquations.jl)**
+- `solve(simulation::Simulator)` will solve (O)DE and provide `df::DataFrame`.
     - For now, only [**in-place** method (iip)](https://diffeq.sciml.ai/stable/basics/problem/#In-place-vs-Out-of-Place-Function-Definition-Forms) is supported.
+
+**Interactive interface (you should be aware of how to use [`integrator` interface in DifferentialEquations.jl](https://diffeq.sciml.ai/stable/basics/integrator/#integrator))**
+- `reinit!(simulator::Simulator)` will reinitialise `simulator::Simulator`.
+- `step!(simulator::Simulator, Δt; stop_at_tdt=true)` will step the `simulator::Simulator` as `Δt`.
+- `step_until!(simulator::Simulator, tf)` will step the `simulator::Simulator` until `tf`.
+- `push!(simulator::Simulator, df::DataFrame)` will push a datum from `simulator` to `df`.
+
+**Utilities**
 - `apply_inputs(func; kwargs...)`
     - By using this, user can easily apply external inputs into environments. It is borrowed from [an MRAC example of ComponentArrays.jl](https://jonniedie.github.io/ComponentArrays.jl/stable/examples/adaptive_control/) and extended to be compatible with [SimulationLogger.jl](https://github.com/JinraeKim/SimulationLogger.jl).
     - (Limitations) for now, dynamical equations wrapped by `apply_inputs` will automatically generate logging function (even without `@Loggable`). In this case, all data will be an array of empty `NamedTuple`.
@@ -67,113 +73,77 @@ User can extend these methods or simply define other methods.
 
 ## Examples
 
+### Custom environments, discrete problems, etc.
+See directory `./test`.
+
 ### (TL; DR) Minimal example
 ```julia
 using FSimBase
-const FSBase = FSimBase
 using DifferentialEquations
-using SimulationLogger: @log
-
 using ComponentArrays
+using Test
+using LinearAlgebra
+using DataFrames
 
 
 function main()
-    state0 = [1, 2]
+    state0 = [1.0, 2.0]
     p = 1
+    tf = 1.0
+    Δt = 0.01
     @Loggable function dynamics!(dx, x, p, t)
         @log t
         @log x
         dx .= -p.*x
     end
-    prob, df = FSimBase.sim(state0, dynamics!, p;
-                            solver=Tsit5(),
-                            tf=10.0,
-                           )
-    df
+    simulator = Simulator(
+                          state0, dynamics!, p;
+                          Problem=ODEProblem,
+                          solver=Tsit5(),
+                          tf=tf,
+                         )
+    # solve approach (automatically reinitialised)
+    @time _df = solve(simulator; savestep=Δt)
+    # interactive simulation
+    ## step!
+    reinit!(simulator)
+    step!(simulator, Δt)
+    @test simulator.integrator.t ≈ Δt
+    ## step_until! (callback-like)
+    ts_weird = 0:Δt:tf+Δt
+    df_ = DataFrame()
+    reinit!(simulator)
+    @time for t in ts_weird
+        flag = step_until!(simulator, t)  # flag == false if step is inappropriate
+        if simulator.integrator.u[1] < 5e-1
+            break
+        else
+            push!(simulator, df_, flag)  # push data only when flag == true
+        end
+    end
+    println(df_[end-5:end, :])
+    ## step_until!
+    df = DataFrame()
+    reinit!(simulator)
+    @time for t in ts_weird
+        step_until!(simulator, t)
+        push!(simulator, df)  # flag=true is default
+        # safer way:
+        # flag = step_until!(simulator, t)
+        # push!(simulator, df, flag)
+        # or, equivalently,
+        # push!(simulator, df, step_until!(simulator, t))  # compact form
+    end
+    println(df[end-5:end, :])
+    @test norm(_df.sol[end].x - df.sol[end].x) < 1e-6
+    @test simulator.integrator.t ≈ tf
+end
+
+@testset "minimal" begin
+    main()
 end
 ```
-
-### (TL; DR) Toy example
-```julia
-using FSimBase
-
-using LinearAlgebra  # for I, e.g., Matrix(I, n, n)
-using ComponentArrays
-using UnPack
-using Transducers
-using Plots
-using DifferentialEquations
-
-
-struct MyEnv <: AbstractEnv  # AbstractEnv exported from FSimBase
-    a
-    b
-end
-
-"""
-FlightSims recommends you to use closures for State and Dynamics!. For more details, see https://docs.julialang.org/en/v1/devdocs/functions/.
-"""
-function State(env::MyEnv)
-    return function (x1::Number, x2::Number)
-        ComponentArray(x1=x1, x2=x2)
-    end
-end
-
-function Dynamics!(env::MyEnv)
-    @unpack a, b = env  # @unpack is very useful!
-    @Loggable function dynamics!(dx, x, p, t; u)  # `Loggable` makes it loggable via SimulationLogger.jl (imported in FSimBase)
-        @unpack x1, x2 = x
-        @log x1  # to log x1
-        @log x2  # to log x2
-        dx.x1 = a*x2
-        dx.x2 = b*u
-    end
-end
-
-function my_controller(x, p, t)
-    @unpack x1, x2 = x
-    -(x1+x2)
-end
-
-
-function main()
-    n = 2
-    m = 1
-    a, b = 1, 1
-    A = -Matrix(I, n, n)
-    B = Matrix(I, m, m)
-    env = MyEnv(a, b)
-    tf = 10.0
-    Δt = 0.01
-    x10, x20 = 10.0, 0.0
-    x0 = State(env)(x10, x20)
-    # prob: DE problem, df: DataFrame
-    @time prob, df = sim(
-                         x0,  # initial condition
-                         apply_inputs(Dynamics!(env); u=my_controller);  # dynamics!; apply_inputs is exported from FSimBase and is so useful for systems with inputs
-                         solver=Tsit5(),
-                         tf=10.0,
-                         savestep=Δt,  # savestep is NOT simulation step
-                        )  # sim is exported from FSimBase
-    ts = df.time
-    x1s = df.sol |> Map(datum -> datum.x1) |> collect
-    x2s = df.sol |> Map(datum -> datum.x2) |> collect
-    # plot
-    p_x1 = plot(ts, x1s;
-                label="x1",
-               )
-    p_x2 = plot(ts, x2s;
-                label="x2",
-               )
-    p_x = plot(p_x1, p_x2, layout=(2, 1))
-    # save
-    dir_log = "figures"
-    mkpath(dir_log)
-    savefig(p_x, joinpath(dir_log, "toy_example.png"))
-    display(p_x)
-end
-```
-![ex_screenshot](./figures/toy_example.png)
+![ex_screenshot](./figures/custom_example.png)
 
 
 

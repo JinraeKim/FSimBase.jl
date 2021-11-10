@@ -6,6 +6,7 @@ using UnPack
 using Transducers
 using Plots
 using DifferentialEquations
+using Test
 
 
 struct MyEnv <: AbstractEnv  # AbstractEnv exported from FSimBase
@@ -50,28 +51,28 @@ function main()
     Δt = 0.01
     x10, x20 = 10.0, 0.0
     x0 = State(env)(x10, x20)
-    # prob: DE problem, df: DataFrame
-    @time prob, df = sim(
-                         x0,  # initial condition
-                         apply_inputs(Dynamics!(env); u=my_controller);  # dynamics!; apply_inputs is exported from FSimBase and is so useful for systems with inputs
-                         solver=Tsit5(),
-                         tf=10.0,
-                         savestep=Δt,  # savestep is NOT simulation step
-                        )  # sim is exported from FSimBase
+    # simulator
+    simulator = Simulator(
+                          x0, apply_inputs(Dynamics!(env); u=my_controller);
+                          Problem=ODEProblem,
+                          solver=Tsit5(),
+                          tf=tf,
+                         )
+    @time df = solve(simulator; savestep=Δt)
     ts = df.time
     x1s = df.sol |> Map(datum -> datum.x1) |> collect
     x2s = df.sol |> Map(datum -> datum.x2) |> collect
     # plot
-    p_x1 = plot(ts, x1s;
-                label="x1",
-               )
-    p_x2 = plot(ts, x2s;
-                label="x2",
-               )
+    p_x1 = plot(ts, x1s; label="x1")
+    p_x2 = plot(ts, x2s; label="x2")
     p_x = plot(p_x1, p_x2, layout=(2, 1))
     # save
     dir_log = "figures"
     mkpath(dir_log)
-    savefig(p_x, joinpath(dir_log, "toy_example.png"))
+    savefig(p_x, joinpath(dir_log, "custom_example.png"))
     display(p_x)
+end
+
+@testset "custom_example" begin
+    main()
 end
