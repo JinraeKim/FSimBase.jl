@@ -14,7 +14,7 @@ using DataFrames
 
 export AbstractEnv, State, Params, Dynamics, Dynamics!
 export AbstractController, Command
-export sim, apply_inputs
+export apply_inputs
 export Simulator
 export solve, reinit!, log!, step!, step_until!
 
