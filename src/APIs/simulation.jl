@@ -16,28 +16,6 @@ function _initialise(__Problem, state0, __dyn, p, t0, tf)
 end
 
 """
-Extended to deal with empty Dict.
-"""
-function _namedtuple(x::Dict)
-    if x == Dict()
-        return NamedTuple()  # empty NamedTuple
-    else
-        return namedtuple(x)
-    end
-end
-
-function recursive_namedtuple(x::Any)
-    x
-end
-
-function recursive_namedtuple(d::Dict)
-    _namedtuple(
-                Dict(k => recursive_namedtuple(v) for (k, v) in d)
-               )
-end
-
-
-"""
 Simulator struct.
 # NOTICE
 - If `p` is not copyable, i.e., `applicable(copy, p) == false`, it would not correctly be logged in log_func.
@@ -116,9 +94,9 @@ end
 function _push!(df::DataFrame, integrator::DEIntegrator, log_func)
     x = integrator.u
     t = integrator.t
-    __log_dict__ = log_func(x, t, integrator)
-    __log_nt__ = recursive_namedtuple(__log_dict__)
-    push!(df, (; time=t, sol=__log_nt__))
+    __logger__ = log_func(x, t, integrator)
+    # __log_nt__ = recursive_namedtuple(__logger__)
+    push!(df, (; time=t, sol=__logger__))
 end
 
 function Base.push!(simulator::Simulator, df::DataFrame, flag=true)
@@ -156,7 +134,7 @@ function DiffEqBase.solve(simulator::Simulator;
     elseif saveat != nothing && savestep != nothing
         error("Assign values of either `saveat` or `savestep`")
     end
-    saved_values = SavedValues(Float64, Dict)
+    saved_values = SavedValues(Float64, NamedTuple)
     if log_func != nothing
         cb_save = SavingCallback(log_func, saved_values;
                                  saveat=saveat, tdir=Int(sign(tf-t0)))
@@ -167,72 +145,10 @@ function DiffEqBase.solve(simulator::Simulator;
               kwargs...)
     df = DataFrame(
                    time = saved_values.t,
-                   sol = saved_values.saveval |> Map(recursive_namedtuple) |> collect,
+                   sol = saved_values.saveval,
                   )
     df
 end
-
-
-# function sim(state0, dyn, p=nothing;
-#         solver=nothing,  # DifferentialEquations.jl will find a default solver
-#         t0=0.0, tf=1.0,
-#         callback::DECallback=CallbackSet(),
-#         log_off=false,
-#         saveat=nothing,
-#         savestep=nothing,
-#         kwargs...,
-#     )
-#     if saveat == nothing && savestep == nothing
-#         saveat = []  # default
-#     elseif saveat != nothing && savestep == nothing
-#         # nothing
-#     elseif saveat == nothing && savestep != nothing
-#         saveat = t0:savestep:tf
-#     elseif saveat != nothing && savestep != nothing
-#         error("Assign values of either `saveat` or `savestep`")
-#     end
-#     tspan = (t0, tf)
-#     iip = true
-#     __dyn = (dx, x, p, t) -> dyn(dx, x, p, t)
-#     prob = ODEProblem{iip}(__dyn, state0, tspan, p)  # true: isinplace
-#     saved_values = SavedValues(Float64, Dict)
-#     cb_save = nothing
-#     if log_off == false
-#         # logging function
-#         if isinplace(prob)
-#             __log_indicator__ = __LOG_INDICATOR__()  # just an indicator for logging
-#             if hasmethod(dyn, Tuple{Any, Any, Any, Any, __LOG_INDICATOR__})
-#                 log_func = function (x, t, integrator::DEIntegrator; kwargs...)
-#                     x = copy(x)  # `x` merely denotes a "view"
-#                     dyn(zero.(x), x, integrator.p, t, __log_indicator__; kwargs...)
-#                 end
-#                 cb_save = SavingCallback(log_func, saved_values;
-#                                          saveat=saveat, tdir=Int(sign(tspan[2]-tspan[1])))
-#             end
-#         else
-#             error("Not tested")
-#         end
-#         callback = CallbackSet(callback, cb_save)  # save values "after all other callbacks"
-#     end
-#     sol = solve(prob, solver;
-#                 callback=callback,
-#                 kwargs...)
-#     prob, sol
-#     if log_off == true
-#         return prob, sol
-#     else
-#         # recursive NamedTuple conversion from Dict; https://discourse.julialang.org/t/how-to-make-a-named-tuple-from-a-dictionary/10899/34?u=ihany
-#         recursive_namedtuple(x::Any) = x
-#         recursive_namedtuple(d::Dict) = _namedtuple(
-#                                                     Dict(k => recursive_namedtuple(v) for (k, v) in d)
-#                                                    )
-#         df = DataFrame(
-#                        time = saved_values.t,
-#                        sol = saved_values.saveval |> Map(recursive_namedtuple) |> collect,
-#                       )
-#         return prob, df
-#     end
-# end
 
 
 """

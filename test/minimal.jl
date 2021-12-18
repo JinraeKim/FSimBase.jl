@@ -18,7 +18,7 @@ function main()
     end
     simulator = Simulator(
                           state0, dynamics!, p;
-                          Problem=ODEProblem,
+                          Problem=:ODE,
                           solver=Tsit5(),
                           tf=tf,
                          )
