@@ -6,7 +6,6 @@ import DiffEqBase
 using DiffEqBase: DECallback, DEIntegrator, ODEProblem, DiscreteProblem, CallbackSet, isinplace, init, solve
 using DiffEqCallbacks: SavedValues, SavingCallback
 @reexport using SimulationLogger
-using Transducers: Map
 using DataFrames: DataFrame
 using NamedTupleTools: namedtuple
 using DataFrames

@@ -3,7 +3,6 @@ using FSimBase
 using LinearAlgebra  # for I, e.g., Matrix(I, n, n)
 using ComponentArrays
 using UnPack
-using Transducers
 using Plots
 using DifferentialEquations
 using Test
@@ -60,8 +59,8 @@ function main()
                          )
     @time df = solve(simulator; savestep=Δt)
     ts = df.time
-    x1s = df.sol |> Map(datum -> datum.x1) |> collect
-    x2s = df.sol |> Map(datum -> datum.x2) |> collect
+    x1s = [datum.x1 for datum in df.sol]
+    x2s = [datum.x2 for datum in df.sol]
     # plot
     p_x1 = plot(ts, x1s; label="x1")
     p_x2 = plot(ts, x2s; label="x2")
